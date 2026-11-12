@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>ACAI Webmap</title>
+    <meta property="og:description" content="WebMap" />
+    <meta property="og:category" content="Events & Queries" />
+    <meta property="og:order" content="1" />
+    <meta property="og:created" content="2025-06-25" />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css' />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+        }
+
+        .rank-bar-block {
+            float: left;
+            width: 1vw;
+            height: 1vw;
+            border: 0.2vw solid white;
+        }
+
+        .selected {
+            border: 0.2vw solid black;
+            color: black !important;
+        }
+
+        .rank-bar {
+            font-size: 9px;
+            text-align: center;
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #info-panel {
+            position: absolute;
+            right: 0.5%;
+            bottom: 12.5%;
+            width: 30%;
+            height: 75%;
+            overflow: auto;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            text-align: center;
+            padding: 1vh;
+        }
+
+        #mode-panel {
+            position: absolute;
+            right: 40%;
+            bottom: 0.5%;
+            width: 17%;
+            height: 7%;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            text-align: center;
+            display: flex;
+            justify-content: space-evenly;
+            align-items: center;
+            cursor: default;
+        }
+
+        #reset-mode {
+            display: none;
+            cursor: pointer;
+        }
+
+        .row {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 0.5vw;
+            cursor: default;
+            padding: 0;
+        }
+
+        .metric {
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        #map canvas {
+            cursor: crosshair;
+        }
+    </style>
+    <script type="module">
+        import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
+
+        function capitalize(s) {
+            return s && String(s[0]).toUpperCase() + String(s).slice(1);
+        }
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                'version': 8,
+                'sources': {
+                    'satellite': {
+                        'tiles': ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                        'type': 'raster'
+                    },
+                },
+                'layers': [
+                    {
+                        'id': 'Satellite',
+                        'type': 'raster',
+                        'source': 'satellite',
+                    },
+                ],
+            },
+            center: [-3.2, 55.93],
+            zoom: 11.5
+        });
+
+        //build map
+        map.on('load', () => {
+            map.addSource('polygons', {
+                'type': 'geojson',
+                'data': './web_test_data.geojson'
+            });
+            map.addLayer({
+                'id': 'polygon-fill',
+                'type': 'fill',
+                'source': 'polygons',
+                'layout': {},
+                'paint': {
+                    'fill-color': "#229c52",
+                    'fill-opacity': 0.75,
+                }
+            });
+            map.addLayer({
+                'id': 'polygon-outline',
+                'type': 'line',
+                'source': 'polygons',
+                'layout': {},
+                'paint': {
+                    'line-color': "#aaffaa"
+                }
+            });
+            // LABELS
+            // map.addLayer({
+            //     'id': 'polygon-label',
+            //     'type': 'symbol',
+            //     'source': 'polygons',
+            //     'layout': {
+            //         'text-field': ['get', 'name'], 'text-size': 14,
+            //         'text-allow-overlap': false, 'text-ignore-placement': false
+            //     },
+            //     'paint': { 'text-color': '#ffffff' }
+            // });
+        });
+
+        //handle changes to view mode
+        function set_viewing_mode(mode) {
+            document.querySelectorAll('.metric').forEach(el => el.style.border = "none");
+           
+
+            if (mode == 'all') {
+                document.getElementById("reset-mode").style.display = "none";
+                map.setPaintProperty('polygon-fill', 'fill-color', '#229c52');
+            } else {
+                document.getElementById("reset-mode").style.display = "block";
+                document.getElementById(mode + '-row').style.border = "2px solid black";
+                map.setPaintProperty('polygon-fill', 'fill-color',
+                    [
+                        'step',
+                        ['get', mode+'_bin'],
+                        '#a50026',1, '#a50026',2, '#da372a',3, '#f67b4a',4, '#fdbf6f',5, '#feeea2',6, '#eaf6a2',7, '#b7e075',8, '#74c365',9, '#229c52',10, '#006837' 
+                    ]
+                );
+            }
+
+            document.getElementById('mode-label').textContent = capitalize(mode);
+            return;
+        }
+
+
+        //hover events
+        map.on('mouseenter', 'polygon-fill', (e) => {
+            const features = map.queryRenderedFeatures(e.point);
+
+            const featureProperties = features.map((feat) => {
+                const displayFeat = feat['properties'];
+                return displayFeat;
+            })[0];
+
+            try {
+                document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
+
+                //display basic attributes
+                document.getElementById('feature_name_field').textContent = featureProperties['name']
+                document.getElementById('feature_id_field').textContent = featureProperties['id']
+                document.getElementById('feature_type_field').textContent = featureProperties['type']
+                document.getElementById('feature_owner_field').textContent = featureProperties['assignee']
+
+                //calculate and display area rank 
+                document.getElementById('feature_area_field').textContent = Number(featureProperties['area_m2']).toLocaleString();
+                document.getElementById('area-bar').querySelector(`.block-${featureProperties['area_bin']}`).classList.add("selected");
+
+
+                //document.getElementById('test_output_field').textContent = Math.max(Math.round(10-((((Number(featureProperties['area_rank']))-1)/75)*10)), 1)
+            } catch {
+                console.log("caught error")
+            }
+        });
+
+        //click to focus mapmode
+        document.getElementById("area-row").addEventListener("click", function () { set_viewing_mode("area") }, false);
+        document.getElementById("reset-mode").addEventListener("click", function () { set_viewing_mode("all") }, false);
+
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="mode-panel">
+        <h2>Mode: <span id="mode-label">All</span></h2>
+        <h1 id="reset-mode">&olarr;</h1>
+    </div>
+    <div id="info-panel">
+        <div class="row">
+            <h1 id="feature_name_field">Name</h1>
+        </div>
+        <div class="row">
+
+            <h3>#<span id="feature_id_field">fID</span></h3>
+            <h3>·</h3>
+            <h3><span id="feature_type_field">type</span></h3>
+
+        </div>
+
+        <div class="row metric" id="area-row">
+            <p>Area: <span id="feature_area_field">0</span> m<sup>2</sup></p>
+            <div id="area-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <p><span id="test_output_field"></span></p>
+        </div>
+        <div class="row">
+            <p>Owner: <span id="feature_owner_field"></span></p>
+        </div>
+    </div>
+
+</body>
+
+</html>
+
+<!--
+#a50026
+#da372a
+#f67b4a
+#fdbf6f
+#feeea2
+#eaf6a2
+#b7e075
+#74c365
+#229c52
+#006837
+-->
