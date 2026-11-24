@@ -1,7 +1,6 @@
 <!-- 
 TODO:
 -pull data from oracle 
--click to select specific polygons
 -->
 
 <!DOCTYPE html>
@@ -75,6 +74,7 @@ TODO:
             align-items: center;
             justify-content: flex-end;
             overflow-y: hidden;
+            border:2px solid #144228;
         }
 
         #mode-panel {
@@ -91,6 +91,8 @@ TODO:
             justify-content: space-evenly;
             align-items: center;
             cursor: default;
+                        border:2px solid #144228;
+
         }
 
         #reset-mode {
@@ -112,13 +114,16 @@ TODO:
             border-radius: 10px;
             justify-content: space-between;
             height: fit-content;
-            padding: 1vh;
+            margin: 0.5vh;
+            padding: 0.5vh;
             z-index: 2;
+            border: 2px solid transparent;
         }
 
-        #map canvas {
-            cursor: crosshair;
+        .metric:not(.selected):hover {
+            background-color: rgba(200, 200, 200, 0.5);
         }
+
 
         #radar-chart-div {
             margin-top: -10%;
@@ -477,7 +482,7 @@ terrain
             'version': 8,
             'sources': {
                 'satellite': {
-                    'tiles': ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                    'tiles': ['https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png?key=cb1_5f9u_1_5a4724b5cfa5da543deeb4cc'],
                     'type': 'raster'
                 },
             },
@@ -490,10 +495,15 @@ terrain
             ],
         },
         center: [-3.15, 55.93],
-        zoom: 11.5
+        zoom: 11.5,
+        maxBounds: [
+            [-3.5, 55.8], // Southwest coordinates
+            [-2.8, 56.07]  // Northeast coordinates
+        ]
     });
 
     let hoveredFeatureId = null;
+    let selectedFeatureId = null;
 
     const ctx = document.getElementById('myChart');
     const data = {
@@ -549,7 +559,8 @@ terrain
     map.on('load', () => {
         map.addSource('polygons', {
             'type': 'geojson',
-            'data': './web_test_data.geojson'
+            'data': './web_test_data.geojson',
+            'promoteId': 'id'
         });
 
         map.addLayer({
@@ -563,12 +574,7 @@ terrain
                     ['get', 'mpi_bin'],
                     '#a50026', 1, '#a50026', 2, '#da372a', 3, '#f67b4a', 4, '#fdbf6f', 5, '#feeea2', 6, '#eaf6a2', 7, '#b7e075', 8, '#74c365', 9, '#229c52', 10, '#006837'
                 ],
-                'fill-opacity': [
-                    'case',
-                    ['boolean', ['feature-state', 'hovelet chart_data = [];r'], false],
-                    1,
-                    0.5
-                ],
+                'fill-opacity': 0.5
             }
         });
         map.addLayer({
@@ -577,8 +583,15 @@ terrain
             'source': 'polygons',
             'layout': {},
             'paint': {
-                'line-color': "#aaffaa"
+                'line-color': "#144228",
+                'line-width': [
+                    'case',
+                    ['boolean', ['feature-state', 'hover'], false],
+                    4,
+                    1
+                ]
             }
+
         });
         // LABELS
         // map.addLayer({
@@ -593,10 +606,79 @@ terrain
         // });
 
         map.on('mousemove', 'polygon-fill', (e) => {
-            const features = map.queryRenderedFeatures(e.point);
+            map.getCanvas().style.cursor = "crosshair";
+            if (selectedFeatureId == null) {
+                const features = map.queryRenderedFeatures(e.point);
 
-            radar_chart.data.datasets.forEach((dataset) => {
-                dataset.data = [];
+                const featureProperties = features.map((feat) => {
+                    const displayFeat = feat['properties'];
+                    return displayFeat;
+                })[0];
+
+                radar_chart.data.datasets.forEach((dataset) => {
+                    dataset.data = [];
+                });
+
+                if (e.features.length > 0) {
+                    if (hoveredFeatureId !== null) {
+                        map.setFeatureState(
+                            { source: 'polygons', id: hoveredFeatureId },
+                            { hover: false }
+                        );
+                    }
+                    hoveredFeatureId = e.features[0].id;
+                    map.setFeatureState(
+                        { source: 'polygons', id: hoveredFeatureId },
+                        { hover: true }
+                    );
+                }
+
+                try {
+                    document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
+
+                    //display basic attributes
+                    document.getElementById('feature_name_field').textContent = featureProperties['name']
+                    document.getElementById('feature_id_field').textContent = featureProperties['id']
+                    document.getElementById('feature_type_field').textContent = featureProperties['type']
+
+                    //display ranks 
+                    for (let field of field_ids) {
+                        document.getElementById('feature_' + field + '_field').textContent = Number(featureProperties[field + "_score"]).toFixed(2);
+                        document.getElementById(field + '-bar').querySelector(`.block-${featureProperties[field + '_bin']}`).classList.add("selected");
+                        if (field != 'mpi') {
+                            radar_chart.data.datasets.forEach((dataset) => {
+                                dataset.data.push(featureProperties[field + '_bin']);
+                            });
+                        }
+                    }
+                    radar_chart.update();
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        });
+
+
+
+        map.on('mouseleave', 'polygon-fill', () => {
+            map.getCanvas().style.cursor = "";
+        
+            if (selectedFeatureId == null) {
+                if (hoveredFeatureId !== null) {
+                    map.setFeatureState(
+                        { source: 'polygons', id: hoveredFeatureId },
+                        { hover: false }
+                    );
+                    console.log("0");
+                }
+                hoveredFeatureId = null;
+            }
+        });
+
+        // TODO
+        map.on('click', (e) => {
+            const features = map.queryRenderedFeatures(e.point, {
+                layers: ['polygon-fill']
             });
 
             const featureProperties = features.map((feat) => {
@@ -604,70 +686,52 @@ terrain
                 return displayFeat;
             })[0];
 
+            radar_chart.data.datasets.forEach((dataset) => {
+                dataset.data = [];
+            });
 
-            if (e.features.length > 0) {
-                if (hoveredFeatureId !== null) {
-                    map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: false });
+            if (features.length === 0) {
+                if (selectedFeatureId !== null) {
+                    map.setFeatureState({ source: 'polygons', id: selectedFeatureId }, { hover: false });
                 }
-                hoveredFeatureId = featureProperties['id'];
-                map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: true });
-            }
+                selectedFeatureId = null;
+            } else {
+                if (selectedFeatureId !== null) {
+                    map.setFeatureState({ source: 'polygons', id: selectedFeatureId }, { hover: false });
+                }
+                selectedFeatureId = featureProperties['id'];
+                map.setFeatureState({ source: 'polygons', id: selectedFeatureId }, { hover: true });
 
+                try {
+                    document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
 
-            try {
-                document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
+                    //display basic attributes
+                    document.getElementById('feature_name_field').textContent = featureProperties['name']
+                    document.getElementById('feature_id_field').textContent = featureProperties['id']
+                    document.getElementById('feature_type_field').textContent = featureProperties['type']
 
-                //display basic attributes
-                document.getElementById('feature_name_field').textContent = featureProperties['name']
-                document.getElementById('feature_id_field').textContent = featureProperties['id']
-                document.getElementById('feature_type_field').textContent = featureProperties['type']
-
-                //display ranks 
-                for (let field of field_ids) {
-                    document.getElementById('feature_' + field + '_field').textContent = Number(featureProperties[field + "_score"]).toFixed(2);
-                    document.getElementById(field + '-bar').querySelector(`.block-${featureProperties[field + '_bin']}`).classList.add("selected");
-                    if (field != 'mpi') {
-                        radar_chart.data.datasets.forEach((dataset) => {
-                            dataset.data.push(featureProperties[field + '_bin']);
-                        });
+                    //display ranks 
+                    for (let field of field_ids) {
+                        document.getElementById('feature_' + field + '_field').textContent = Number(featureProperties[field + "_score"]).toFixed(2);
+                        document.getElementById(field + '-bar').querySelector(`.block-${featureProperties[field + '_bin']}`).classList.add("selected");
+                        if (field != 'mpi') {
+                            radar_chart.data.datasets.forEach((dataset) => {
+                                dataset.data.push(featureProperties[field + '_bin']);
+                            });
+                        }
                     }
+                    radar_chart.update();
+                } catch (error) {
+                    console.error(error);
                 }
-                radar_chart.update();
-            } catch (error) {
-                console.error(error);
             }
+
+
+
+            console.log(selectedFeatureId)
         });
-
-
-
-        map.on('mouseleave', 'polygon-fill', () => {
-            if (hoveredFeatureId !== null) {
-                map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: false });
-            }
-            hoveredFeatureId = null;
-        });
-
-        // TODO
-        // map.on('click', (e) => {
-        //     const features = map.queryRenderedFeatures(e.point, {
-        //         layers: ['polygon-fill']
-        //     });
-
-        //     if (features.length === 0) {
-        //         // Click occurred outside the polygon
-        //         alert('Clicked outside polygons');
-        //     } else {
-        //         const featureProperties = features.map((feat) => {
-        //             const displayFeat = feat['properties'];
-        //             return displayFeat;
-        //         })[0];
-
-        //         alert(featureProperties['name']);
-        //     }
-        // });
 
         //click to focus mapmode
-
         for (let field of field_ids) {
             document.getElementById(field + "-row").addEventListener("click", function () { set_viewing_mode(field) }, false);
         }
@@ -678,13 +742,18 @@ terrain
 
     //handle changes to view mode
     function set_viewing_mode(mode) {
-        document.querySelectorAll('.metric').forEach(el => el.style.border = "none");
+        document.querySelectorAll('.metric').forEach(el => {
+            el.style.border = "2px solid transparent";
+            el.style.backgroundColor = "";
+        });
+
 
         if (mode == 'mpi') {
             document.getElementById("reset-mode").style.display = "none";
         } else {
             document.getElementById("reset-mode").style.display = "block";
             document.getElementById(mode + '-row').style.border = "2px solid black";
+            document.getElementById(mode + '-row').style.backgroundColor = "rgba(45, 135, 84, 0.4)";
         }
         map.setPaintProperty('polygon-fill', 'fill-color',
             [
