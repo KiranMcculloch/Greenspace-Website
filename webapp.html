@@ -1,3 +1,9 @@
+<!-- 
+TODO:
+-pull data from oracle 
+-click to select specific polygons
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,23 +16,28 @@
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.css' />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body {
+        * {
+            /* border: 1px solid red; */
             margin: 0;
             padding: 0;
         }
+
 
         html,
         body,
         #map {
             height: 100%;
+            overflow-x: hidden;
+            overflow-y: hidden;
         }
 
         .rank-bar-block {
             float: left;
-            width: 1vw;
-            height: 1vw;
+            width: 0.8vw;
+            height: 0.8vw;
             border: 0.2vw solid white;
         }
 
@@ -44,19 +55,26 @@
             align-items: center;
         }
 
+        .metric-label {
+            display: flex;
+            align-items: center;
+        }
+
         #info-panel {
             position: absolute;
             right: 0.5%;
-            bottom: 12.5%;
-            width: 30%;
-            height: 75%;
+            bottom: 2.5%;
+            width: 33%;
+            height: 95%;
             overflow: auto;
             background: rgba(255, 255, 255, 0.8);
             border-radius: 15px;
             display: flex;
             flex-direction: column;
             text-align: center;
-            padding: 1vh;
+            align-items: center;
+            justify-content: flex-end;
+            overflow-y: hidden;
         }
 
         #mode-panel {
@@ -81,160 +99,59 @@
         }
 
         .row {
-            width: 100%;
+            width: 95%;
             display: flex;
-            justify-content: center;
             gap: 0.5vw;
             cursor: default;
             padding: 0;
+            justify-content: center;
         }
 
         .metric {
             cursor: pointer;
             border-radius: 10px;
+            justify-content: space-between;
+            height: fit-content;
+            padding: 1vh;
+            z-index: 2;
         }
 
         #map canvas {
             cursor: crosshair;
         }
+
+        #radar-chart-div {
+            margin-top: -10%;
+            width: 70%;
+            z-index: 1;
+        }
+
+        svg {
+            padding-right: 0.5vw;
+        }
     </style>
-    <script type="module">
-        import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
-
-        function capitalize(s) {
-            return s && String(s[0]).toUpperCase() + String(s).slice(1);
-        }
-
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-                'version': 8,
-                'sources': {
-                    'satellite': {
-                        'tiles': ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                        'type': 'raster'
-                    },
-                },
-                'layers': [
-                    {
-                        'id': 'Satellite',
-                        'type': 'raster',
-                        'source': 'satellite',
-                    },
-                ],
-            },
-            center: [-3.2, 55.93],
-            zoom: 11.5
-        });
-
-        //build map
-        map.on('load', () => {
-            map.addSource('polygons', {
-                'type': 'geojson',
-                'data': './web_test_data.geojson'
-            });
-            map.addLayer({
-                'id': 'polygon-fill',
-                'type': 'fill',
-                'source': 'polygons',
-                'layout': {},
-                'paint': {
-                    'fill-color': "#229c52",
-                    'fill-opacity': 0.75,
-                }
-            });
-            map.addLayer({
-                'id': 'polygon-outline',
-                'type': 'line',
-                'source': 'polygons',
-                'layout': {},
-                'paint': {
-                    'line-color': "#aaffaa"
-                }
-            });
-            // LABELS
-            // map.addLayer({
-            //     'id': 'polygon-label',
-            //     'type': 'symbol',
-            //     'source': 'polygons',
-            //     'layout': {
-            //         'text-field': ['get', 'name'], 'text-size': 14,
-            //         'text-allow-overlap': false, 'text-ignore-placement': false
-            //     },
-            //     'paint': { 'text-color': '#ffffff' }
-            // });
-        });
-
-        //handle changes to view mode
-        function set_viewing_mode(mode) {
-            document.querySelectorAll('.metric').forEach(el => el.style.border = "none");
-           
-
-            if (mode == 'all') {
-                document.getElementById("reset-mode").style.display = "none";
-                map.setPaintProperty('polygon-fill', 'fill-color', '#229c52');
-            } else {
-                document.getElementById("reset-mode").style.display = "block";
-                document.getElementById(mode + '-row').style.border = "2px solid black";
-                map.setPaintProperty('polygon-fill', 'fill-color',
-                    [
-                        'step',
-                        ['get', mode+'_bin'],
-                        '#a50026',1, '#a50026',2, '#da372a',3, '#f67b4a',4, '#fdbf6f',5, '#feeea2',6, '#eaf6a2',7, '#b7e075',8, '#74c365',9, '#229c52',10, '#006837' 
-                    ]
-                );
-            }
-
-            document.getElementById('mode-label').textContent = capitalize(mode);
-            return;
-        }
-
-
-        //hover events
-        map.on('mouseenter', 'polygon-fill', (e) => {
-            const features = map.queryRenderedFeatures(e.point);
-
-            const featureProperties = features.map((feat) => {
-                const displayFeat = feat['properties'];
-                return displayFeat;
-            })[0];
-
-            try {
-                document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
-
-                //display basic attributes
-                document.getElementById('feature_name_field').textContent = featureProperties['name']
-                document.getElementById('feature_id_field').textContent = featureProperties['id']
-                document.getElementById('feature_type_field').textContent = featureProperties['type']
-                document.getElementById('feature_owner_field').textContent = featureProperties['assignee']
-
-                //calculate and display area rank 
-                document.getElementById('feature_area_field').textContent = Number(featureProperties['area_m2']).toLocaleString();
-                document.getElementById('area-bar').querySelector(`.block-${featureProperties['area_bin']}`).classList.add("selected");
-
-
-                //document.getElementById('test_output_field').textContent = Math.max(Math.round(10-((((Number(featureProperties['area_rank']))-1)/75)*10)), 1)
-            } catch {
-                console.log("caught error")
-            }
-        });
-
-        //click to focus mapmode
-        document.getElementById("area-row").addEventListener("click", function () { set_viewing_mode("area") }, false);
-        document.getElementById("reset-mode").addEventListener("click", function () { set_viewing_mode("all") }, false);
-
-    </script>
 </head>
+
+<!-- 
+mpi
+poi
+am
+seasonality
+transit
+population
+price
+terrain
+-->
 
 <body>
     <div id="map"></div>
     <div id="mode-panel">
-        <h2>Mode: <span id="mode-label">All</span></h2>
+        <h2>Mode: <span id="mode-label">Overall</span></h2>
         <h1 id="reset-mode">&olarr;</h1>
     </div>
     <div id="info-panel">
         <div class="row">
-            <h1 id="feature_name_field">Name</h1>
+            <h2 id="feature_name_field">Name</h2>
         </div>
         <div class="row">
 
@@ -244,9 +161,20 @@
 
         </div>
 
-        <div class="row metric" id="area-row">
-            <p>Area: <span id="feature_area_field">0</span> m<sup>2</sup></p>
-            <div id="area-bar" class="rank-bar">
+        <div class="row metric" id="mpi-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 24 24"><!-- Icon from Material Symbols by Google - https://github.com/google/material-design-icons/blob/master/LICENSE -->
+                    <path fill="currentColor"
+                        d="m8 18l4-3.05L16 18l-1.5-4.95l4-2.85h-4.9L12 5l-1.6 5.2H5.5l4 2.85zm4 4q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22" />
+                </svg>
+                <p>
+                    Cultural Accessibility:
+                    <span id="feature_mpi_field">0</span>
+                </p>
+            </div>
+
+            <div id="mpi-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
                     1</div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
@@ -269,16 +197,521 @@
                     10</div>
             </div>
         </div>
+        <div class="row metric" id="poi-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 15 15"><!-- Icon from Pinhead Map Icons by Quincy Morgan - https://creativecommons.org/publicdomain/zero/1.0/ -->
+                    <path fill="currentColor"
+                        d="M10.12 8.74c.21.62.22 1.23.04 1.83c-.02.09-.04.19-.08.27l-.19.38c-.07.17-.1.29-.1.53l.02.37l-.01.11v.27H5.25l-.01-.15V11.3c.01-.35.06-.69.08-1.03c0-.1.06-.13.13-.13h.05c.6.01 1.21-.01 1.8-.13c.88-.18 1.69-.51 2.42-.99l.27-.19c.04-.03.07-.05.13-.09M7.96 0c.3.09.6.18.86.37c.39.31.61.68.6 1.17c0 .66.1 1.48-.08 1.8l-.26.12c-.12.05-.23.08-.38.08v.48l2.26.33v1.81h-.77l-.12.5c-.04.16-.07.32-.08.48c-.03.37-.24.6-.52.82C8.6 8.61 7.62 9 6.53 9.11c-.3.03-.6.01-.93.01l.14-.36c.02-.06.05-.12.08-.18c.12-.22.19-.44.19-.68L6 7.75c-.01-.16 0-.32 0-.5H4.46c.02-.58-.01-1.14.07-1.7c.09-.62.52-1.04 1.14-1.27c.21-.08.43-.16.65-.23c.1-.04.14-.09.15-.2c.04-.41-.05-.77-.32-1.08A.6.6 0 0 1 6 2.38v-.1c.02-.31-.02-.63.03-.93C6.18.64 6.64.21 7.38.03L7.47 0zM4 15v-1.5h7V15z" />
+                </svg>
+                <p>
+                    Points of Interest:
+                    <span id="feature_poi_field">0</span>
+                </p>
+            </div>
+            <div id="poi-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="am-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 24 24"><!-- Icon from IconOven by Appic Marketing - MIT -->
+                    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                        stroke-width="1.5">
+                        <path d="M5.25 4.75v8m13.5-8v8m-15-6.5h16.5m-16.5 3.5h16.5" />
+                        <rect width="18.5" height="3" x="2.75" y="12.75" rx="1.5" />
+                        <path d="M5.25 15.75v5.5m13.5-5.5v5.5" />
+                    </g>
+                </svg>
+                <p>
+                    Amenities:
+                    <span id="feature_am_field">0</span>
+                </p>
+            </div>
+            <div id="am-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="seasonality-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 24 24"><!-- Icon from Griddy Icons by Zuzana Benova - https://github.com/griddy-icons/griddy-icons/blob/main/LICENSE -->
+                    <path fill="currentColor"
+                        d="M17.5 7.525V7.5C17.5 4.465 15.035 2 12 2C9.7 2 7.68 3.415 6.875 5.515C4.23 5.28 2 7.395 2 10c0 1.635.87 3.11 2.265 3.905A4.253 4.253 0 0 0 8.5 18.5h2.75v2H10V22h4v-1.5h-1.25V13H16v-1.5h-3.25V8h-1.5v4.69l-2.47-2.47l-1.06 1.06l3.53 3.53V17H8.5a2.755 2.755 0 0 1-2.75-2.75c0-.2.025-.4.07-.61l.14-.62l-.59-.24A2.985 2.985 0 0 1 3.5 10c0-1.885 1.735-3.395 3.715-2.91l.73.18l.18-.725a3.986 3.986 0 0 1 3.88-3.04c2.205 0 4 1.795 4 4v1.5h1c1.93 0 3.5 1.57 3.5 3.5s-1.57 3.5-3.5 3.5h-3v1.5h3c2.755 0 5-2.245 5-5a5.003 5.003 0 0 0-4.5-4.975z" />
+                </svg>
+                <p>
+                    Seasonality:
+                    <span id="feature_seasonality_field">0</span>
+                </p>
+            </div>
+            <div id="seasonality-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="transit-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 24 24"><!-- Icon from Keyline Icons by Keyline Icons - https://github.com/keyline-icons/keyline-icons/blob/main/LICENSE -->
+                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 18L14 18M9 18C9 19.1046 8.1046 20 7 20C5.8954 20 5 19.1046 5 18C5 16.8954 5.8954 16 7 16C8.1046 16 9 16.8954 9 18ZM19 18C19 19.1046 18.1046 20 17 20C15.8954 20 15 19.1046 15 18C15 16.8954 15.8954 16 17 16C18.1046 16 19 16.8954 19 18ZM5 18L4 18C2.8954 18 2 17.1046 2 16L2 6C2 4.8954 2.8954 4 4 4L17.4118 4C17.7936 4 18.1651 4.1238 18.4706 4.3529C20.6924 6.0193 22 8.6345 22 11.4118L22 12L22 16C22 17.1046 21.1046 18 20 18L19 18M14 4L14 9M14 9L16.7071 11.7071C16.8946 11.8946 17.149 12 17.4142 12L22 12M14 9L8 9M8 9L2 9M8 9L8 4" />
+                </svg>
+                <p>
+                    Transit:
+                    <span id="feature_transit_field">0</span>
+                </p>
+            </div>
+            <div id="transit-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="population-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="32"
+                    viewBox="0 0 15 16"><!-- Icon from FormKit Icons by FormKit, Inc - https://github.com/formkit/formkit/blob/master/packages/icons/LICENSE -->
+                    <path fill="currentColor"
+                        d="M7.5 7a2.5 2.5 0 0 1 0-5a2.5 2.5 0 0 1 0 5m0-4C6.67 3 6 3.67 6 4.5S6.67 6 7.5 6S9 5.33 9 4.5S8.33 3 7.5 3" />
+                    <path fill="currentColor"
+                        d="M13.5 11c-.28 0-.5-.22-.5-.5s.22-.5.5-.5s.5-.22.5-.5A2.5 2.5 0 0 0 11.5 7h-1c-.28 0-.5-.22-.5-.5s.22-.5.5-.5c.83 0 1.5-.67 1.5-1.5S11.33 3 10.5 3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5A2.5 2.5 0 0 1 13 4.5c0 .62-.22 1.18-.6 1.62c1.49.4 2.6 1.76 2.6 3.38c0 .83-.67 1.5-1.5 1.5m-12 0C.67 11 0 10.33 0 9.5c0-1.62 1.1-2.98 2.6-3.38c-.37-.44-.6-1-.6-1.62A2.5 2.5 0 0 1 4.5 2c.28 0 .5.22.5.5s-.22.5-.5.5C3.67 3 3 3.67 3 4.5S3.67 6 4.5 6c.28 0 .5.22.5.5s-.22.5-.5.5h-1A2.5 2.5 0 0 0 1 9.5c0 .28.22.5.5.5s.5.22.5.5s-.22.5-.5.5m9 3h-6c-.83 0-1.5-.67-1.5-1.5v-1C3 9.57 4.57 8 6.5 8h2c1.93 0 3.5 1.57 3.5 3.5v1c0 .83-.67 1.5-1.5 1.5m-4-5A2.5 2.5 0 0 0 4 11.5v1c0 .28.22.5.5.5h6c.28 0 .5-.22.5-.5v-1A2.5 2.5 0 0 0 8.5 9z" />
+                </svg>
+                <p>
+                    Population:
+                    <span id="feature_population_field">0</span>
+                </p>
+            </div>
+            <div id="population-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="price-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 16 16"><!-- Icon from FormKit Icons by FormKit, Inc - https://github.com/formkit/formkit/blob/master/packages/icons/LICENSE -->
+                    <path fill="currentColor"
+                        d="M8 15c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7M8 2C4.69 2 2 4.69 2 8s2.69 6 6 6s6-2.69 6-6s-2.69-6-6-6" />
+                    <path fill="currentColor"
+                        d="M10.5 12h-5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h5c.28 0 .5.22.5.5s-.22.5-.5.5m-2-3h-3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h3c.28 0 .5.22.5.5s-.22.5-.5.5" />
+                    <path fill="currentColor"
+                        d="M6.5 12c-.28 0-.5-.22-.5-.5V6.62C6 5.17 7.18 4 8.62 4c.7 0 1.36.27 1.85.77l.38.38c.2.2.2.51 0 .71s-.51.2-.71 0l-.38-.38c-.31-.31-.71-.47-1.15-.47c-.89 0-1.62.73-1.62 1.62v4.88c0 .28-.22.5-.5.5Z" />
+                </svg>
+                <p>
+                    Price:
+                    <span id="feature_price_field">0</span>
+                </p>
+            </div>
+            <div id="price-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row metric" id="terrain-row">
+            <div class="metric-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                    viewBox="0 0 32 32"><!-- Icon from Carbon by IBM - Apache 2.0 -->
+                    <path fill="currentColor"
+                        d="M24 17h-6a1 1 0 0 1-1-1V4a2.003 2.003 0 0 0-2-2H5a2.003 2.003 0 0 0-2 2v24a2.003 2.003 0 0 0 2 2h22a2.003 2.003 0 0 0 2-2v-6a5.006 5.006 0 0 0-5-5m3 5v2h-4v-5h1a3.003 3.003 0 0 1 3 3M15 4v2h-4v2h4v2h-4v2h4v2h-4v2h4a3.003 3.003 0 0 0 3 3h3v5h-6.838l-3-1H5V4Zm10 24v-1h-2v1h-2v-1h-2v1h-2v-1h-2v1h-2v-1h-2v1H5v-3h5.838l3 1H27v2Z" />
+                </svg>
+                <p>
+                    Terrain:
+                    <span id="feature_terrain_field">0</span>
+                </p>
+            </div>
+            <div id="terrain-bar" class="rank-bar">
+                <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
+                    1</div>
+                <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
+                    2</div>
+                <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
+                    3</div>
+                <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
+                    4</div>
+                <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
+                    5</div>
+                <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
+                    6</div>
+                <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
+                    7</div>
+                <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
+                    8</div>
+                <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
+                    9</div>
+                <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
+                    10</div>
+            </div>
+        </div>
+        <div class="row" id="radar-chart-div">
+            <canvas id="myChart"></canvas>
+        </div>
 
-        <div class="row">
-            <p><span id="test_output_field"></span></p>
-        </div>
-        <div class="row">
-            <p>Owner: <span id="feature_owner_field"></span></p>
-        </div>
     </div>
 
 </body>
+<script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
+
+
+    let field_ids = ["mpi", "poi", "am", "seasonality", "transit", "population", "price", "terrain"]
+
+
+    function capitalize(s) {
+        return s && String(s[0]).toUpperCase() + String(s).slice(1);
+    }
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            'version': 8,
+            'sources': {
+                'satellite': {
+                    'tiles': ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                    'type': 'raster'
+                },
+            },
+            'layers': [
+                {
+                    'id': 'Satellite',
+                    'type': 'raster',
+                    'source': 'satellite',
+                },
+            ],
+        },
+        center: [-3.15, 55.93],
+        zoom: 11.5
+    });
+
+    let hoveredFeatureId = null;
+
+    const ctx = document.getElementById('myChart');
+    const data = {
+        labels: [
+            'PoIs',
+            'Amenities',
+            'Seasonality',
+            'Transit',
+            'Population',
+            'Price',
+            'Terrain'
+        ],
+        datasets: [{
+            data: [10, 10, 10, 10, 10, 10, 10],
+            fill: true,
+            backgroundColor: 'rgba(45, 135, 84, 0.4)',
+            borderColor: 'rgb(45, 135, 84)',
+            pointBackgroundColor: 'rgb(45, 135, 84)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgb(45, 135, 84)'
+        },
+        ]
+    };
+
+    const radar_chart = new Chart(ctx, {
+        type: 'radar',
+        data: data,
+        options: {
+            elements: {
+                line: {
+                    borderWidth: 5
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                r: {
+                    max: 10,
+                    min: 0,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+        },
+    });
+
+    //build map
+    map.on('load', () => {
+        map.addSource('polygons', {
+            'type': 'geojson',
+            'data': './web_test_data.geojson'
+        });
+
+        map.addLayer({
+            'id': 'polygon-fill',
+            'type': 'fill',
+            'source': 'polygons',
+            'layout': {},
+            'paint': {
+                'fill-color': [
+                    'step',
+                    ['get', 'mpi_bin'],
+                    '#a50026', 1, '#a50026', 2, '#da372a', 3, '#f67b4a', 4, '#fdbf6f', 5, '#feeea2', 6, '#eaf6a2', 7, '#b7e075', 8, '#74c365', 9, '#229c52', 10, '#006837'
+                ],
+                'fill-opacity': [
+                    'case',
+                    ['boolean', ['feature-state', 'hovelet chart_data = [];r'], false],
+                    1,
+                    0.5
+                ],
+            }
+        });
+        map.addLayer({
+            'id': 'polygon-outline',
+            'type': 'line',
+            'source': 'polygons',
+            'layout': {},
+            'paint': {
+                'line-color': "#aaffaa"
+            }
+        });
+        // LABELS
+        // map.addLayer({
+        //     'id': 'polygon-label',
+        //     'type': 'symbol',
+        //     'source': 'polygons',
+        //     'layout': {
+        //         'text-field': ['get', 'name'], 'text-size': 14,
+        //         'text-allow-overlap': false, 'text-ignore-placement': false
+        //     },
+        //     'paint': { 'text-color': '#ffffff' }
+        // });
+
+        map.on('mousemove', 'polygon-fill', (e) => {
+            const features = map.queryRenderedFeatures(e.point);
+
+            radar_chart.data.datasets.forEach((dataset) => {
+                dataset.data = [];
+            });
+
+            const featureProperties = features.map((feat) => {
+                const displayFeat = feat['properties'];
+                return displayFeat;
+            })[0];
+
+
+            if (e.features.length > 0) {
+                if (hoveredFeatureId !== null) {
+                    map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: false });
+                }
+                hoveredFeatureId = featureProperties['id'];
+                map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: true });
+            }
+
+
+            try {
+                document.querySelectorAll('.rank-bar-block').forEach(el => el.classList.remove('selected'));
+
+                //display basic attributes
+                document.getElementById('feature_name_field').textContent = featureProperties['name']
+                document.getElementById('feature_id_field').textContent = featureProperties['id']
+                document.getElementById('feature_type_field').textContent = featureProperties['type']
+
+                //display ranks 
+                for (let field of field_ids) {
+                    document.getElementById('feature_' + field + '_field').textContent = Number(featureProperties[field + "_score"]).toFixed(2);
+                    document.getElementById(field + '-bar').querySelector(`.block-${featureProperties[field + '_bin']}`).classList.add("selected");
+                    if (field != 'mpi') {
+                        radar_chart.data.datasets.forEach((dataset) => {
+                            dataset.data.push(featureProperties[field + '_bin']);
+                        });
+                    }
+                }
+                radar_chart.update();
+            } catch (error) {
+                console.error(error);
+            }
+        });
+
+
+
+        map.on('mouseleave', 'polygon-fill', () => {
+            if (hoveredFeatureId !== null) {
+                map.setFeatureState({ source: 'polygons', id: hoveredFeatureId }, { hover: false });
+            }
+            hoveredFeatureId = null;
+        });
+
+        // TODO
+        // map.on('click', (e) => {
+        //     const features = map.queryRenderedFeatures(e.point, {
+        //         layers: ['polygon-fill']
+        //     });
+
+        //     if (features.length === 0) {
+        //         // Click occurred outside the polygon
+        //         alert('Clicked outside polygons');
+        //     } else {
+        //         const featureProperties = features.map((feat) => {
+        //             const displayFeat = feat['properties'];
+        //             return displayFeat;
+        //         })[0];
+
+        //         alert(featureProperties['name']);
+        //     }
+        // });
+
+        //click to focus mapmode
+
+        for (let field of field_ids) {
+            document.getElementById(field + "-row").addEventListener("click", function () { set_viewing_mode(field) }, false);
+        }
+        document.getElementById("reset-mode").addEventListener("click", function () { set_viewing_mode("mpi") }, false);
+
+
+    });
+
+    //handle changes to view mode
+    function set_viewing_mode(mode) {
+        document.querySelectorAll('.metric').forEach(el => el.style.border = "none");
+
+        if (mode == 'mpi') {
+            document.getElementById("reset-mode").style.display = "none";
+        } else {
+            document.getElementById("reset-mode").style.display = "block";
+            document.getElementById(mode + '-row').style.border = "2px solid black";
+        }
+        map.setPaintProperty('polygon-fill', 'fill-color',
+            [
+                'step',
+                ['get', mode + '_bin'],
+                '#a50026', 1, '#a50026', 2, '#da372a', 3, '#f67b4a', 4, '#fdbf6f', 5, '#feeea2', 6, '#eaf6a2', 7, '#b7e075', 8, '#74c365', 9, '#229c52', 10, '#006837'
+            ]
+        );
+        document.getElementById('mode-label').textContent = id_to_full(mode);
+        return;
+    }
+
+    function id_to_full(metric_string) {
+        switch (metric_string) {
+            case "poi":
+                return "Points of Interest"
+            case "am":
+                return "Amenities"
+            case "mpi":
+                return "Overall"
+            default:
+                return capitalize(metric_string)
+        }
+    }
+
+
+</script>
 
 </html>
 
