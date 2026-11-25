@@ -1,6 +1,15 @@
 <!-- 
 TODO:
--pull data from oracle 
+-pull data from oracle !
+-migrate site to uni server !
+-compare mode !!
+-download data
+-display poi/am data *
+-raw values rather than scores
+-image in header *
+-dropdowns !
+-read more page !!
+-clean up reused code
 -->
 
 <!DOCTYPE html>
@@ -35,9 +44,13 @@ TODO:
 
         .rank-bar-block {
             float: left;
-            width: 0.8vw;
-            height: 0.8vw;
+            width: 1.6vh;
+            height: 1.6vh;
             border: 0.2vw solid white;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .selected {
@@ -46,7 +59,6 @@ TODO:
         }
 
         .rank-bar {
-            font-size: 9px;
             text-align: center;
             display: flex;
             flex-wrap: nowrap;
@@ -54,9 +66,21 @@ TODO:
             align-items: center;
         }
 
+        .rank-number-label {
+            font-size: 1.6vh;
+
+        }
+
         .metric-label {
             display: flex;
             align-items: center;
+            text-wrap: nowrap;
+        }
+
+        #info-panel {
+            display: flex;
+            align-items: center;
+            text-wrap: nowrap;
         }
 
         #info-panel {
@@ -65,6 +89,7 @@ TODO:
             bottom: 2.5%;
             width: 33%;
             height: 95%;
+            font-size: 2vh;
             overflow: auto;
             background: rgba(255, 255, 255, 0.8);
             border-radius: 15px;
@@ -72,17 +97,18 @@ TODO:
             flex-direction: column;
             text-align: center;
             align-items: center;
-            justify-content: flex-end;
-            overflow-y: hidden;
-            border:2px solid #144228;
+            justify-content: space-around;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            border: 2px solid #144228;
         }
 
-        #mode-panel {
+        /* #mode-panel {
             position: absolute;
-            right: 40%;
+            right: 45%;
             bottom: 0.5%;
-            width: 17%;
-            height: 7%;
+            width: 10%;
+            height: 5%;
             overflow: hidden;
             background: rgba(255, 255, 255, 0.8);
             border-radius: 15px;
@@ -91,14 +117,13 @@ TODO:
             justify-content: space-evenly;
             align-items: center;
             cursor: default;
-                        border:2px solid #144228;
+            border: 2px solid #144228;
+        } */
 
-        }
-
-        #reset-mode {
+        /* #reset-mode {
             display: none;
             cursor: pointer;
-        }
+        } */
 
         .row {
             width: 95%;
@@ -127,12 +152,27 @@ TODO:
 
         #radar-chart-div {
             margin-top: -10%;
-            width: 70%;
+            height: 40%;
             z-index: 1;
         }
 
         svg {
             padding-right: 0.5vw;
+            width: 4vh;
+        }
+
+        #top-info-panel {
+            flex-direction: column;
+            width: 100%;
+            height: 30%;
+            padding: 1vw;
+            background-position: center;
+            text-shadow: 0.1vh 0.1vh white, -0.1vh -0.1vh white, -0.1vh 0.1vh white, 0.1vh -0.1vh white;
+        }
+
+        #mpi-row {
+            border: 2px solid black;
+            background-color: rgba(45, 135, 84, 0.3);
         }
     </style>
 </head>
@@ -150,25 +190,28 @@ terrain
 
 <body>
     <div id="map"></div>
-    <div id="mode-panel">
-        <h2>Mode: <span id="mode-label">Overall</span></h2>
-        <h1 id="reset-mode">&olarr;</h1>
-    </div>
+    <!-- <div id="mode-panel">
+        <h4>Mode: <span id="mode-label">Overall</span></h4>
+        <h2 id="reset-mode">&olarr;</h2>
+    </div> -->
     <div id="info-panel">
-        <div class="row">
-            <h2 id="feature_name_field">Name</h2>
-        </div>
-        <div class="row">
+        <div class="row" id="top-info-panel">
+            <div class="row">
+                <h2 id="feature_name_field">Name</h2>
+            </div>
+            <div class="row">
 
-            <h3>#<span id="feature_id_field">fID</span></h3>
-            <h3>·</h3>
-            <h3><span id="feature_type_field">type</span></h3>
+                <h3>#<span id="feature_id_field">fID</span></h3>
+                <h3>·</h3>
+                <h3><span id="feature_type_field">type</span></h3>
 
+            </div>
         </div>
+
 
         <div class="row metric" id="mpi-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"><!-- Icon from Material Symbols by Google - https://github.com/google/material-design-icons/blob/master/LICENSE -->
                     <path fill="currentColor"
                         d="m8 18l4-3.05L16 18l-1.5-4.95l4-2.85h-4.9L12 5l-1.6 5.2H5.5l4 2.85zm4 4q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22" />
@@ -181,30 +224,40 @@ terrain
 
             <div id="mpi-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="poi-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 15 15"><!-- Icon from Pinhead Map Icons by Quincy Morgan - https://creativecommons.org/publicdomain/zero/1.0/ -->
                     <path fill="currentColor"
                         d="M10.12 8.74c.21.62.22 1.23.04 1.83c-.02.09-.04.19-.08.27l-.19.38c-.07.17-.1.29-.1.53l.02.37l-.01.11v.27H5.25l-.01-.15V11.3c.01-.35.06-.69.08-1.03c0-.1.06-.13.13-.13h.05c.6.01 1.21-.01 1.8-.13c.88-.18 1.69-.51 2.42-.99l.27-.19c.04-.03.07-.05.13-.09M7.96 0c.3.09.6.18.86.37c.39.31.61.68.6 1.17c0 .66.1 1.48-.08 1.8l-.26.12c-.12.05-.23.08-.38.08v.48l2.26.33v1.81h-.77l-.12.5c-.04.16-.07.32-.08.48c-.03.37-.24.6-.52.82C8.6 8.61 7.62 9 6.53 9.11c-.3.03-.6.01-.93.01l.14-.36c.02-.06.05-.12.08-.18c.12-.22.19-.44.19-.68L6 7.75c-.01-.16 0-.32 0-.5H4.46c.02-.58-.01-1.14.07-1.7c.09-.62.52-1.04 1.14-1.27c.21-.08.43-.16.65-.23c.1-.04.14-.09.15-.2c.04-.41-.05-.77-.32-1.08A.6.6 0 0 1 6 2.38v-.1c.02-.31-.02-.63.03-.93C6.18.64 6.64.21 7.38.03L7.47 0zM4 15v-1.5h7V15z" />
@@ -216,30 +269,40 @@ terrain
             </div>
             <div id="poi-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="am-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"><!-- Icon from IconOven by Appic Marketing - MIT -->
                     <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                         stroke-width="1.5">
@@ -255,30 +318,40 @@ terrain
             </div>
             <div id="am-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="seasonality-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"><!-- Icon from Griddy Icons by Zuzana Benova - https://github.com/griddy-icons/griddy-icons/blob/main/LICENSE -->
                     <path fill="currentColor"
                         d="M17.5 7.525V7.5C17.5 4.465 15.035 2 12 2C9.7 2 7.68 3.415 6.875 5.515C4.23 5.28 2 7.395 2 10c0 1.635.87 3.11 2.265 3.905A4.253 4.253 0 0 0 8.5 18.5h2.75v2H10V22h4v-1.5h-1.25V13H16v-1.5h-3.25V8h-1.5v4.69l-2.47-2.47l-1.06 1.06l3.53 3.53V17H8.5a2.755 2.755 0 0 1-2.75-2.75c0-.2.025-.4.07-.61l.14-.62l-.59-.24A2.985 2.985 0 0 1 3.5 10c0-1.885 1.735-3.395 3.715-2.91l.73.18l.18-.725a3.986 3.986 0 0 1 3.88-3.04c2.205 0 4 1.795 4 4v1.5h1c1.93 0 3.5 1.57 3.5 3.5s-1.57 3.5-3.5 3.5h-3v1.5h3c2.755 0 5-2.245 5-5a5.003 5.003 0 0 0-4.5-4.975z" />
@@ -290,34 +363,44 @@ terrain
             </div>
             <div id="seasonality-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="transit-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-                    viewBox="0 0 24 24"><!-- Icon from Keyline Icons by Keyline Icons - https://github.com/keyline-icons/keyline-icons/blob/main/LICENSE -->
-                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 18L14 18M9 18C9 19.1046 8.1046 20 7 20C5.8954 20 5 19.1046 5 18C5 16.8954 5.8954 16 7 16C8.1046 16 9 16.8954 9 18ZM19 18C19 19.1046 18.1046 20 17 20C15.8954 20 15 19.1046 15 18C15 16.8954 15.8954 16 17 16C18.1046 16 19 16.8954 19 18ZM5 18L4 18C2.8954 18 2 17.1046 2 16L2 6C2 4.8954 2.8954 4 4 4L17.4118 4C17.7936 4 18.1651 4.1238 18.4706 4.3529C20.6924 6.0193 22 8.6345 22 11.4118L22 12L22 16C22 17.1046 21.1046 18 20 18L19 18M14 4L14 9M14 9L16.7071 11.7071C16.8946 11.8946 17.149 12 17.4142 12L22 12M14 9L8 9M8 9L2 9M8 9L8 4" />
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"><!-- Icon from Griddy Icons by Zuzana Benova - https://github.com/griddy-icons/griddy-icons/blob/main/LICENSE -->
+                    <path fill="currentColor" fill-rule="evenodd"
+                        d="M17.25 2H6.75A2.755 2.755 0 0 0 4 4.75v14.5c0 .69.56 1.25 1.25 1.25H6.5V22H8v-1.5h8V22h1.5v-1.5h1.25c.69 0 1.25-.56 1.25-1.25V4.75A2.755 2.755 0 0 0 17.25 2M6.75 3.5h10.5c.69 0 1.25.56 1.25 1.25v.75h-13v-.75c0-.69.56-1.25 1.25-1.25M5.5 7h13v6.5h-13zm0 12v-4h13v4zM8 18a1 1 0 1 0 0-2a1 1 0 0 0 0 2m9-1a1 1 0 1 1-2 0a1 1 0 0 1 2 0m5.5-7H21v3h1.5zm-21 0H3v3H1.5z"
+                        clip-rule="evenodd" />
                 </svg>
                 <p>
                     Transit:
@@ -326,25 +409,35 @@ terrain
             </div>
             <div id="transit-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="population-row">
@@ -363,37 +456,57 @@ terrain
             </div>
             <div id="population-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="price-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-                    viewBox="0 0 16 16"><!-- Icon from FormKit Icons by FormKit, Inc - https://github.com/formkit/formkit/blob/master/packages/icons/LICENSE -->
-                    <path fill="currentColor"
-                        d="M8 15c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7M8 2C4.69 2 2 4.69 2 8s2.69 6 6 6s6-2.69 6-6s-2.69-6-6-6" />
-                    <path fill="currentColor"
-                        d="M10.5 12h-5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h5c.28 0 .5.22.5.5s-.22.5-.5.5m-2-3h-3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h3c.28 0 .5.22.5.5s-.22.5-.5.5" />
-                    <path fill="currentColor"
-                        d="M6.5 12c-.28 0-.5-.22-.5-.5V6.62C6 5.17 7.18 4 8.62 4c.7 0 1.36.27 1.85.77l.38.38c.2.2.2.51 0 .71s-.51.2-.71 0l-.38-.38c-.31-.31-.71-.47-1.15-.47c-.89 0-1.62.73-1.62 1.62v4.88c0 .28-.22.5-.5.5Z" />
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"><!-- Icon from TDesign Icons by TDesign - https://github.com/Tencent/tdesign-icons/blob/main/LICENSE -->
+                    <defs>
+                        <path id="SVGS9q3IkIf" d="M21.5 11v10h-19V11z" />
+                    </defs>
+                    <g fill="none">
+                        <use href="#SVGS9q3IkIf" />
+                        <path
+                            d="M12 13.5a2.5 2.5 0 1 1 0 5a2.5 2.5 0 0 1 0-5m5.136-7.209L19 5.67l1.824 5.333H3.002L3 11.004L14.146 2.1z" />
+                        <path stroke="currentColor" stroke-linecap="square" stroke-width="2"
+                            d="M21 11.003h-.176L19.001 5.67L3.354 11.003L3 11m-.5.004H3L14.146 2.1l2.817 3.95" />
+                        <g stroke="currentColor" stroke-linecap="square" stroke-width="2">
+                            <path d="M14.5 16a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0Z" />
+                            <use href="#SVGS9q3IkIf" />
+                            <path
+                                d="M2.5 11h2a2 2 0 0 1-2 2zm19 0h-2a2 2 0 0 0 2 2zm-19 10h2.002A2 2 0 0 0 2.5 18.998zm19 0h-2a2 2 0 0 1 2-2z" />
+                        </g>
+                    </g>
                 </svg>
                 <p>
                     Price:
@@ -402,30 +515,40 @@ terrain
             </div>
             <div id="price-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row metric" id="terrain-row">
             <div class="metric-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 32 32"><!-- Icon from Carbon by IBM - Apache 2.0 -->
                     <path fill="currentColor"
                         d="M24 17h-6a1 1 0 0 1-1-1V4a2.003 2.003 0 0 0-2-2H5a2.003 2.003 0 0 0-2 2v24a2.003 2.003 0 0 0 2 2h22a2.003 2.003 0 0 0 2-2v-6a5.006 5.006 0 0 0-5-5m3 5v2h-4v-5h1a3.003 3.003 0 0 1 3 3M15 4v2h-4v2h4v2h-4v2h4v2h-4v2h4a3.003 3.003 0 0 0 3 3h3v5h-6.838l-3-1H5V4Zm10 24v-1h-2v1h-2v-1h-2v1h-2v-1h-2v1h-2v-1h-2v1H5v-3h5.838l3 1H27v2Z" />
@@ -437,25 +560,35 @@ terrain
             </div>
             <div id="terrain-bar" class="rank-bar">
                 <div class="rank-bar-block block-1" style="background-color: #a50026; color: #a50026;">
-                    1</div>
+                    <span class="rank-number-label">1</span>
+                </div>
                 <div class="rank-bar-block block-2" style="background-color: #da372a; color: #da372a">
-                    2</div>
+                    <span class="rank-number-label">2</span>
+                </div>
                 <div class="rank-bar-block block-3" style="background-color: #f67b4a; color: #f67b4a">
-                    3</div>
+                    <span class="rank-number-label">3</span>
+                </div>
                 <div class="rank-bar-block block-4" style="background-color: #fdbf6f; color: #fdbf6f">
-                    4</div>
+                    <span class="rank-number-label">4</span>
+                </div>
                 <div class="rank-bar-block block-5" style="background-color: #feeea2; color: #feeea2">
-                    5</div>
+                    <span class="rank-number-label">5</span>
+                </div>
                 <div class="rank-bar-block block-6" style="background-color: #eaf6a2; color: #eaf6a2">
-                    6</div>
+                    <span class="rank-number-label">6</span>
+                </div>
                 <div class="rank-bar-block block-7" style="background-color: #b7e075; color: #b7e075">
-                    7</div>
+                    <span class="rank-number-label">7</span>
+                </div>
                 <div class="rank-bar-block block-8" style="background-color: #74c365; color: #74c365">
-                    8</div>
+                    <span class="rank-number-label">8</span>
+                </div>
                 <div class="rank-bar-block block-9" style="background-color: #229c52; color: #229c52">
-                    9</div>
+                    <span class="rank-number-label">9</span>
+                </div>
                 <div class="rank-bar-block block-10" style="background-color: #006837; color: #006837">
-                    10</div>
+                    <span class="rank-number-label">10</span>
+                </div>
             </div>
         </div>
         <div class="row" id="radar-chart-div">
@@ -472,12 +605,17 @@ terrain
     let field_ids = ["mpi", "poi", "am", "seasonality", "transit", "population", "price", "terrain"]
 
 
-    function capitalize(s) {
-        return s && String(s[0]).toUpperCase() + String(s).slice(1);
+    function capitalize(str) {
+        var i, frags = str.split('_');
+        for (i = 0; i < frags.length; i++) {
+            frags[i] = frags[i].charAt(0).toUpperCase() + frags[i].slice(1);
+        }
+        return frags.join(' ');
     }
 
     const map = new maplibregl.Map({
         container: 'map',
+        doubleClickZoom: false,
         style: {
             'version': 8,
             'sources': {
@@ -495,7 +633,7 @@ terrain
             ],
         },
         center: [-3.15, 55.93],
-        zoom: 11.5,
+        zoom: 11.5, //11.5
         maxBounds: [
             [-3.5, 55.8], // Southwest coordinates
             [-2.8, 56.07]  // Northeast coordinates
@@ -508,7 +646,7 @@ terrain
     const ctx = document.getElementById('myChart');
     const data = {
         labels: [
-            'PoIs',
+            'Points of Interest',
             'Amenities',
             'Seasonality',
             'Transit',
@@ -517,7 +655,7 @@ terrain
             'Terrain'
         ],
         datasets: [{
-            data: [10, 10, 10, 10, 10, 10, 10],
+            data: [1, 1, 1, 1, 1, 1, 1],
             fill: true,
             backgroundColor: 'rgba(45, 135, 84, 0.4)',
             borderColor: 'rgb(45, 135, 84)',
@@ -552,15 +690,30 @@ terrain
                     }
                 }
             },
+            animation: {
+                duration: 500,
+            }
         },
     });
 
     //build map
     map.on('load', () => {
+        map.setGlobalStateProperty('mode', 'mpi');
+
         map.addSource('polygons', {
             'type': 'geojson',
             'data': './web_test_data.geojson',
             'promoteId': 'id'
+        });
+
+        map.addSource('pois', {
+            'type': 'geojson',
+            'data': './pois.geojson',
+        });
+
+        map.addSource('ams', {
+            'type': 'geojson',
+            'data': './ams.geojson',
         });
 
         map.addLayer({
@@ -574,9 +727,10 @@ terrain
                     ['get', 'mpi_bin'],
                     '#a50026', 1, '#a50026', 2, '#da372a', 3, '#f67b4a', 4, '#fdbf6f', 5, '#feeea2', 6, '#eaf6a2', 7, '#b7e075', 8, '#74c365', 9, '#229c52', 10, '#006837'
                 ],
-                'fill-opacity': 0.5
+                'fill-opacity': 0.4
             }
         });
+
         map.addLayer({
             'id': 'polygon-outline',
             'type': 'line',
@@ -593,6 +747,45 @@ terrain
             }
 
         });
+
+        map.addLayer({
+            'id': 'poi-markers',
+            'type': 'circle',
+            'source': 'pois',
+            'layout': {},
+            'paint': {
+                'circle-color': "#ff0000",
+            },
+            'minzoom': 13,
+            'filter': [
+                'case',
+                ['==', 'mpi', ['global-state', 'mode']],
+                true,
+                ['!=', 'poi', ['global-state', 'mode']],
+                false,
+                ['==', 'poi', ['global-state', 'mode']],
+            ]
+        });
+
+        map.addLayer({
+            'id': 'am-markers',
+            'type': 'circle',
+            'source': 'ams',
+            'layout': {},
+            'paint': {
+                'circle-color': "#0000ff",
+            },
+            'minzoom': 13,
+            'filter': [
+                'case',
+                ['==', 'mpi', ['global-state', 'mode']],
+                true,
+                ['!=', 'am', ['global-state', 'mode']],
+                false,
+                ['==', 'am', ['global-state', 'mode']],
+            ]
+        });
+
         // LABELS
         // map.addLayer({
         //     'id': 'polygon-label',
@@ -639,7 +832,8 @@ terrain
                     //display basic attributes
                     document.getElementById('feature_name_field').textContent = featureProperties['name']
                     document.getElementById('feature_id_field').textContent = featureProperties['id']
-                    document.getElementById('feature_type_field').textContent = featureProperties['type']
+                    document.getElementById('feature_type_field').textContent = capitalize(featureProperties['type'])
+                    document.getElementById('top-info-panel').style.backgroundImage = "url(./img/by_id/" + featureProperties['id'] + ".jpg)";
 
                     //display ranks 
                     for (let field of field_ids) {
@@ -662,20 +856,18 @@ terrain
 
         map.on('mouseleave', 'polygon-fill', () => {
             map.getCanvas().style.cursor = "";
-        
+
             if (selectedFeatureId == null) {
                 if (hoveredFeatureId !== null) {
                     map.setFeatureState(
                         { source: 'polygons', id: hoveredFeatureId },
                         { hover: false }
                     );
-                    console.log("0");
                 }
                 hoveredFeatureId = null;
             }
         });
 
-        // TODO
         map.on('click', (e) => {
             const features = map.queryRenderedFeatures(e.point, {
                 layers: ['polygon-fill']
@@ -708,7 +900,8 @@ terrain
                     //display basic attributes
                     document.getElementById('feature_name_field').textContent = featureProperties['name']
                     document.getElementById('feature_id_field').textContent = featureProperties['id']
-                    document.getElementById('feature_type_field').textContent = featureProperties['type']
+                    document.getElementById('feature_type_field').textContent = capitalize(featureProperties['type'])
+                    document.getElementById('top-info-panel').style.backgroundImage = "url(./img/by_id/" + featureProperties['id'] + ".jpg)";
 
                     //display ranks 
                     for (let field of field_ids) {
@@ -724,18 +917,37 @@ terrain
                 } catch (error) {
                     console.error(error);
                 }
+
+                let bounds = new maplibregl.LngLatBounds();
+
+                function extendBounds(coords) {
+                    //handle multipolygons
+                    if (typeof coords[0] === 'number') {
+                        bounds.extend(coords);
+                    } else {
+                        coords.forEach(extendBounds);
+                    }
+                }
+                extendBounds(features[0].geometry.coordinates);
+                //shift view slightly west, based on size of polygon
+                const feature_area_mod = 0.8*Math.abs(bounds.getEast()-bounds.getWest())
+                console.log(feature_area_mod)
+                bounds.extend([bounds.getEast()+feature_area_mod,bounds.getSouth()])
+
+                if (!bounds.isEmpty()) {
+                    map.fitBounds(bounds, { 
+                        padding: 200,
+                        maxZoom: 16
+                    });
+                }
             }
-
-
-
-            console.log(selectedFeatureId)
         });
 
         //click to focus mapmode
         for (let field of field_ids) {
             document.getElementById(field + "-row").addEventListener("click", function () { set_viewing_mode(field) }, false);
         }
-        document.getElementById("reset-mode").addEventListener("click", function () { set_viewing_mode("mpi") }, false);
+        // document.getElementById("reset-mode").addEventListener("click", function () { set_viewing_mode("mpi") }, false);
 
 
     });
@@ -744,17 +956,14 @@ terrain
     function set_viewing_mode(mode) {
         document.querySelectorAll('.metric').forEach(el => {
             el.style.border = "2px solid transparent";
-            el.style.backgroundColor = "";
+            el.style.backgroundColor = "transparent";
         });
 
+        map.setGlobalStateProperty('mode', mode);
 
-        if (mode == 'mpi') {
-            document.getElementById("reset-mode").style.display = "none";
-        } else {
-            document.getElementById("reset-mode").style.display = "block";
-            document.getElementById(mode + '-row').style.border = "2px solid black";
-            document.getElementById(mode + '-row').style.backgroundColor = "rgba(45, 135, 84, 0.4)";
-        }
+        document.getElementById(mode + '-row').style.border = "2px solid black";
+        document.getElementById(mode + '-row').style.backgroundColor = "rgba(45, 135, 84, 0.3)";
+
         map.setPaintProperty('polygon-fill', 'fill-color',
             [
                 'step',
@@ -762,7 +971,7 @@ terrain
                 '#a50026', 1, '#a50026', 2, '#da372a', 3, '#f67b4a', 4, '#fdbf6f', 5, '#feeea2', 6, '#eaf6a2', 7, '#b7e075', 8, '#74c365', 9, '#229c52', 10, '#006837'
             ]
         );
-        document.getElementById('mode-label').textContent = id_to_full(mode);
+        //document.getElementById('mode-label').textContent = id_to_full(mode);
         return;
     }
 
